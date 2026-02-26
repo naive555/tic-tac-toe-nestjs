@@ -3,64 +3,75 @@
 </p>
 
 <p align="center">
-  Backend service built with <strong>NestJS</strong>, <strong>Fastify</strong>, and <strong>Bun</strong>, focused on high‑performance data fetching and background processing.
+  Backend service built with <strong>NestJS</strong>, <strong>Prisma</strong>, and <strong>PostgreSQL</strong> for a simple Tic-Tac-Toe game API with authentication and scoring system.
 </p>
 
 ---
 
 ## Overview
 
-This project is a NestJS backend application migrated to:
+This project is a backend API for a Tic-Tac-Toe game.
 
-- **Bun** for dependency management and runtime
-- **Fastify** as the HTTP adapter for better performance
-- **BullMQ** for background jobs and queue processing
+Main features:
 
-Primary use case:
+- User registration & login (JWT authentication)
+- Play Tic-Tac-Toe against a simple bot
+- Automatic score calculation (Win / Lose / Draw)
+- Persistent score tracking per user
+- Unit tests for core game logic
 
-- Fetch Pokémon data from external APIs
-- Process and persist data asynchronously into a database
-- Support containerized and Kubernetes‑ready deployment
-
-(Yes, it’s fast. Bun makes `npm install` feel like cheating.)
+The goal is clean architecture, modular structure, and testable business logic.
 
 ---
 
 ## Tech Stack
 
-- **Runtime**: Bun
 - **Framework**: NestJS
-- **HTTP Adapter**: Fastify
-- **Queue**: BullMQ + Redis
-- **Database**: Prisma (configurable)
-- **Cache**: Cache Manager
-- **Containerization**: Docker (K8s‑ready)
+- **Language**: TypeScript
+- **Database**: PostgreSQL
+- **ORM**: Prisma
+- **Authentication**: JWT + Passport
+- **Testing**: Jest
+- **Containerization**: Docker (optional)
 
 ---
 
 ## Requirements
 
-- Bun `>= 1.x`
-- Node.js `>= 18` (for tooling compatibility)
-- Redis (for BullMQ)
-- Docker (optional, recommended)
+- Node.js >= 18
+- PostgreSQL >= 14
+- Docker (optional)
 
 ---
 
-## Project Setup
+## Environment Variables
 
-Install dependencies using Bun:
+Create `.env` file:
+
+```
+DATABASE_URL="postgresql://postgres:123456@localhost:5432/tic_tac_toe"
+JWT_SECRET="your-secret-key"
+JWT_EXPIRES_IN="1d"
+```
+
+---
+
+## Installation
 
 ```bash
 bun install
 ```
 
-Environment files resolution order:
+Generate Prisma client:
 
+```bash
+bunx prisma generate
 ```
-.env.docker  (if ENV=docker)
-.env.local
-.env
+
+Run migrations:
+
+```bash
+bunx prisma migrate dev
 ```
 
 ---
@@ -80,90 +91,171 @@ bun run build
 bun run start:prod
 ```
 
-Fastify will be used automatically as the HTTP adapter.
+Server runs at:
 
----
-
-## Background Jobs (BullMQ)
-
-Pokémon detail fetching is handled asynchronously using BullMQ.
-
-### Queue Flow
-
-1. Producer enqueues Pokémon names
-2. Consumer fetches Pokémon details
-3. Data is saved into the database
-4. Concurrency is controlled to avoid overload
-
-Redis must be running:
-
-```bash
-docker run -p 6379:6379 redis:7
+```
+http://localhost:3000
 ```
 
 ---
 
-## Docker Support
+## API Endpoints
 
-Build image:
+### Auth
 
-```bash
-docker build -t tic_tac_toe-service .
+#### Register
+
+```
+POST /auth/register
 ```
 
-Run container:
+Body:
 
-```bash
-docker run -p 3000:3000 tic_tac_toe-service
+```json
+{
+  "username": "user1",
+  "password": "password"
+}
 ```
 
-Works seamlessly with Docker Desktop and is Kubernetes‑ready.
+#### Login
+
+```
+POST /auth/login
+```
+
+Response:
+
+```json
+{
+  "accessToken": "jwt-token"
+}
+```
 
 ---
 
-## Kubernetes (Optional)
+### Game
 
-The application is designed to run in Kubernetes:
+Requires `Authorization: Bearer <token>`
 
-- Stateless API pods
-- Redis as external or in‑cluster service
-- Horizontal scaling supported
+#### Play Game
 
-Sample manifests can be added later under `/k8s`.
+```
+POST /game/play
+```
+
+Body:
+
+```json
+{
+  "board": [null, null, null, null, null, null, null, null, null],
+  "position": 0
+}
+```
+
+Response:
+
+```json
+{
+  "board": ["X", null, null, null, "O", null, null, null, null],
+  "result": "WIN" // WIN | LOSE | DRAW | null
+}
+```
+
+Game rules:
+
+- Player is always `X`
+- Bot is `O`
+- Bot move is random
+- Score is automatically updated when game ends
+
+---
+
+## Score System
+
+Each user has cumulative score:
+
+- WIN
+- LOSE
+- DRAW
+
+Score is updated automatically via GameService → ScoreService flow.
+
+---
+
+## Project Structure
+
+```
+src/
+ ├── auth/
+ ├── user/
+ ├── game/
+ ├── score/
+ ├── prisma/
+```
+
+Design principles:
+
+- Clear separation of concerns
+- Business logic inside services
+- Controllers are thin
+- Testable core logic
 
 ---
 
 ## Testing
 
+Run unit tests:
+
 ```bash
 bun run test
-bun run test:e2e
+```
+
+Coverage:
+
+```bash
 bun run test:cov
 ```
 
+GameService is covered with unit tests including:
+
+- Invalid move
+- Win case
+- Lose case
+- Draw case
+- ScoreService invocation
+
 ---
 
-## Scripts
+## Docker (Optional)
+
+Build image:
 
 ```bash
-bun run start:dev   # development
-bun run start:prod  # production
-bun run lint
-bun run test
+docker build -t tic-tac-toe-api .
 ```
+
+Run container:
+
+```bash
+docker run -p 3000:3000 tic-tac-toe-api
+```
+
+Make sure PostgreSQL is accessible from container.
 
 ---
 
 ## Notes
 
-- Bun + Fastify significantly reduces startup time
-- BullMQ prevents API overload during mass fetch jobs
-- Concurrency limits are enforced at both queue and worker level
+- Stateless API
+- JWT-based authentication
+- Simple random bot logic (no minimax)
+- Designed for clarity and testability over complexity
 
-In short: fast startup, controlled load, fewer regrets.
+Simple game. Clean structure. No overengineering.
 
 ---
 
 ## License
 
-MIT License
+MIT
