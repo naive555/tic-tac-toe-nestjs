@@ -35,7 +35,7 @@ Core Features:
   - Lose = -1
   - Draw = 0
 - Bonus rule:
-  - 3 consecutive wins → +1 extra point
+  - 3 consecutive wins -> +1 extra point
   - Win streak resets after bonus is granted
 - Persistent score tracking per user
 - Clean architecture with modular separation
@@ -224,16 +224,16 @@ Returns all users and their current scores.
 
 Scoring Rules:
 
-- WIN → +1
-- LOSE → -1
-- DRAW → 0
-- 3 consecutive wins → +1 bonus
+- WIN -> +1
+- LOSE -> -1
+- DRAW -> 0
+- 3 consecutive wins -> +1 bonus
 - Win streak resets after bonus
 
 Score processing flow:
 
 ```
-GameService → ScoreService → Prisma
+GameService -> ScoreService -> Prisma
 ```
 
 Game logic is isolated and unit-tested.
