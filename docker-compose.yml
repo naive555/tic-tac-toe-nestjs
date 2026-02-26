@@ -2,7 +2,7 @@ name: tic_tac_toe-api
 
 services:
   redis:
-    container_name: tic_tac_toe_redis
+    container_name: redis
     image: redis:alpine3.21
     restart: always
     ports:
@@ -15,8 +15,8 @@ services:
     networks:
       - tic_tac_toe-network
 
-  pgsql:
-    container_name: tic_tac_toe_db
+  psql:
+    container_name: db
     image: postgres:16
     restart: always
     ports:
@@ -31,17 +31,17 @@ services:
       timeout: 3s
       retries: 10
     volumes:
-      - pgsql_data:/var/lib/postgresql/data
+      - psql_data:/var/lib/postgresql/data
     networks:
       - tic_tac_toe-network
 
-  nest-bun-app:
-    container_name: tic_tac_toe_app
+  app:
+    container_name: app
     build:
       context: .
       dockerfile: Dockerfile
     depends_on:
-      pgsql:
+      psql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -58,4 +58,4 @@ networks:
     driver: bridge
 
 volumes:
-  pgsql_data:
+  psql_data:

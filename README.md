@@ -32,7 +32,7 @@ Primary use case:
 - **Framework**: NestJS
 - **HTTP Adapter**: Fastify
 - **Queue**: BullMQ + Redis
-- **Database**: TypeORM (configurable)
+- **Database**: Prisma (configurable)
 - **Cache**: Cache Manager
 - **Containerization**: Docker (K8s‑ready)
 
