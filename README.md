@@ -3,60 +3,124 @@
 </p>
 
 <p align="center">
-  Backend service built with <strong>NestJS</strong>, <strong>Prisma</strong>, and <strong>PostgreSQL</strong> for a simple Tic-Tac-Toe game API with authentication and scoring system.
+  Backend API for Tic-Tac-Toe (OX) built with <strong>NestJS</strong>, <strong>Prisma</strong>, <strong>PostgreSQL</strong>, and <strong>OAuth 2.0 (Auth0)</strong>.
 </p>
+
+---
+
+# Tic Tac Toe API
+
+Full Stack Developer Test – Backend implementation for a Tic-Tac-Toe Web Application.
+
+This service provides:
+
+- OAuth 2.0 authentication (Auth0)
+- Player vs Bot gameplay
+- Score tracking with streak bonus logic
+- Admin-style score inspection endpoint
+- Docker-ready deployment
 
 ---
 
 ## Overview
 
-This project is a backend API for a Tic-Tac-Toe game.
+This project implements a RESTful backend for a Tic-Tac-Toe (OX) game.
 
-Main features:
+Core Features:
 
-- User registration & login (JWT authentication)
-- Play Tic-Tac-Toe against a simple bot
-- Automatic score calculation (Win / Lose / Draw)
+- OAuth 2.0 login via Auth0 (RS256 + JWKS validation)
+- Play against a bot
+- Automatic score calculation:
+  - Win = +1
+  - Lose = -1
+  - Draw = 0
+- Bonus rule:
+  - 3 consecutive wins → +1 extra point
+  - Win streak resets after bonus is granted
 - Persistent score tracking per user
-- Unit tests for core game logic
+- Clean architecture with modular separation
 
-The goal is clean architecture, modular structure, and testable business logic.
+The system is stateless and production-ready.
 
 ---
 
 ## Tech Stack
 
-- **Framework**: NestJS
+- **Framework**: NestJS (Fastify adapter)
 - **Language**: TypeScript
+- **Runtime**: Bun
 - **Database**: PostgreSQL
 - **ORM**: Prisma
-- **Authentication**: JWT + Passport
+- **Authentication**: OAuth 2.0 (Auth0) + Passport JWT
+- **Cache**: Redis (optional)
 - **Testing**: Jest
-- **Containerization**: Docker (optional)
+- **Containerization**: Docker + Docker Compose
 
 ---
 
-## Requirements
+## Architecture
 
-- Node.js >= 18
-- PostgreSQL >= 14
-- Docker (optional)
+```
+src/
+ ├── auth/        # OAuth strategy & guards
+ ├── user/        # User management
+ ├── game/        # Game logic (OX engine)
+ ├── score/       # Score & streak calculation
+ ├── prisma/      # Prisma service integration
+ └── main.ts
+```
+
+Design principles:
+
+- Thin controllers
+- Business logic inside services
+- Fully testable GameService
+- Separation of auth / game / scoring concerns
+
+---
+
+## Authentication (OAuth 2.0)
+
+Authentication is handled via Auth0.
+
+Flow:
+
+1. Frontend authenticates user with Auth0
+2. Frontend sends `Authorization: Bearer <access_token>`
+3. Backend validates:
+   - issuer
+   - audience
+   - RS256 signature via JWKS
+4. User is resolved/created internally
+
+No local password storage is implemented.
 
 ---
 
 ## Environment Variables
 
-Create `.env` file:
+Create `.env` (local development):
 
 ```
-DATABASE_URL="postgresql://postgres:123456@localhost:5432/tic_tac_toe"
-JWT_SECRET="your-secret-key"
-JWT_EXPIRES_IN="1d"
+PORT=3001
+NODE_ENV=local
+
+DATABASE_URL=postgresql://postgres:123456@localhost:5432/tic_tac_toe
+
+OAUTH_ISSUER=https://YOUR_DOMAIN.auth0.com/
+OAUTH_AUDIENCE=https://tic-tac-toe-api
+
+REDIS_HOST=localhost
+REDIS_PORT=6379
 ```
+
+For Docker, use `.env.docker` or environment section in compose file.
 
 ---
 
 ## Installation
+
+Install dependencies:
 
 ```bash
 bun install
@@ -68,10 +132,10 @@ Generate Prisma client:
 bunx prisma generate
 ```
 
-Run migrations:
+Push schema to database:
 
 ```bash
-bunx prisma migrate dev
+bunx prisma db push
 ```
 
 ---
@@ -94,54 +158,27 @@ bun run start:prod
 Server runs at:
 
 ```
-http://localhost:3000
+http://localhost:3001/api
 ```
 
 ---
 
 ## API Endpoints
 
-### Auth
-
-#### Register
+All protected endpoints require:
 
 ```
-POST /auth/register
-```
-
-Body:
-
-```json
-{
-  "username": "user1",
-  "password": "password"
-}
-```
-
-#### Login
-
-```
-POST /auth/login
-```
-
-Response:
-
-```json
-{
-  "accessToken": "jwt-token"
-}
+Authorization: Bearer <access_token>
 ```
 
 ---
 
 ### Game
 
-Requires `Authorization: Bearer <token>`
-
-#### Play Game
+#### Play
 
 ```
-POST /game/play
+POST /api/game/play
 ```
 
 Body:
@@ -162,44 +199,44 @@ Response:
 }
 ```
 
-Game rules:
+Rules:
 
-- Player is always `X`
-- Bot is `O`
-- Bot move is random
-- Score is automatically updated when game ends
-
----
-
-## Score System
-
-Each user has cumulative score:
-
-- WIN
-- LOSE
-- DRAW
-
-Score is updated automatically via GameService → ScoreService flow.
+- Player = X
+- Bot = O
+- Bot move = random empty cell
+- Score updates automatically when game ends
 
 ---
 
-## Project Structure
+### Score
+
+#### Get All Player Scores
 
 ```
-src/
- ├── auth/
- ├── user/
- ├── game/
- ├── score/
- ├── prisma/
+GET /api/score
 ```
 
-Design principles:
+Returns all users and their current scores.
 
-- Clear separation of concerns
-- Business logic inside services
-- Controllers are thin
-- Testable core logic
+---
+
+## Score Logic
+
+Scoring Rules:
+
+- WIN → +1
+- LOSE → -1
+- DRAW → 0
+- 3 consecutive wins → +1 bonus
+- Win streak resets after bonus
+
+Score processing flow:
+
+```
+GameService → ScoreService → Prisma
+```
+
+Game logic is isolated and unit-tested.
 
 ---
 
@@ -217,42 +254,53 @@ Coverage:
 bun run test:cov
 ```
 
-GameService is covered with unit tests including:
+Tested scenarios include:
 
 - Invalid move
-- Win case
-- Lose case
-- Draw case
+- Win detection
+- Lose detection
+- Draw detection
 - ScoreService invocation
+- Streak bonus logic
 
 ---
 
-## Docker (Optional)
+## Docker
 
-Build image:
-
-```bash
-docker build -t tic-tac-toe-api .
-```
-
-Run container:
+### Build
 
 ```bash
-docker run -p 3000:3000 tic-tac-toe-api
+docker build -t tic_tac_toe-api .
 ```
 
-Make sure PostgreSQL is accessible from container.
+### Run with Compose
+
+```bash
+docker compose up --build
+```
+
+Services:
+
+- app
+- postgres
+- redis
+
+Application will run on:
+
+```
+http://localhost:3001
+```
 
 ---
 
-## Notes
+## Production Notes
 
-- Stateless API
-- JWT-based authentication
-- Simple random bot logic (no minimax)
-- Designed for clarity and testability over complexity
-
-Simple game. Clean structure. No overengineering.
+- Stateless backend
+- OAuth 2.0 compliant
+- RS256 JWT validation via JWKS
+- Clean modular structure
+- Docker-ready
+- No unnecessary dependencies
 
 ---
 
