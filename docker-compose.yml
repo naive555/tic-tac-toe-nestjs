@@ -1,0 +1,61 @@
+name: tic_tac_toe-api
+
+services:
+  redis:
+    container_name: tic_tac_toe_redis
+    image: redis:alpine3.21
+    restart: always
+    ports:
+      - "${REDIS_PORT}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "localhost", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - tic_tac_toe-network
+
+  pgsql:
+    container_name: tic_tac_toe_db
+    image: postgres:16
+    restart: always
+    ports:
+      - "${DATABASE_PORT}:5432"
+    environment:
+      POSTGRES_DB: "${DATABASE_DATABASE}"
+      POSTGRES_USER: "${DATABASE_USER}"
+      POSTGRES_PASSWORD: "${DATABASE_PASSWORD}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - pgsql_data:/var/lib/postgresql/data
+    networks:
+      - tic_tac_toe-network
+
+  nest-bun-app:
+    container_name: tic_tac_toe_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      pgsql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env.docker
+    ports:
+      - "${PORT}:${PORT}"
+    restart: unless-stopped
+    networks:
+      - tic_tac_toe-network
+
+networks:
+  tic_tac_toe-network:
+    driver: bridge
+
+volumes:
+  pgsql_data:
