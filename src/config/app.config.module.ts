@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
 import { BullModule } from '@nestjs/bull';
@@ -25,11 +24,6 @@ import { getEnvFilePath } from '../utility/common.function';
       ],
       isGlobal: true,
       envFilePath: getEnvFilePath(process.env.NODE_ENV),
-    }),
-    TypeOrmModule.forRootAsync({
-      useFactory: (configService: ConfigService) =>
-        configService.get('database'),
-      inject: [ConfigService],
     }),
     CacheModule.registerAsync({
       isGlobal: true,

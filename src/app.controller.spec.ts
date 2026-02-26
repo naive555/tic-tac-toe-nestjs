@@ -15,8 +15,8 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "This is tic_tac_toe API!"', () => {
-      expect(appController.getHello()).toBe('This is tic_tac_toe API!');
+    it('should return "This is TicTacToe API!"', () => {
+      expect(appController.getHello()).toBe('This is TicTacToe API!');
     });
   });
 });

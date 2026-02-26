@@ -1,63 +1,31 @@
-import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
+import * as jwksRsa from 'jwks-rsa';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { decode } from 'jsonwebtoken';
 
-import { USER_SESSION_KEY } from '../../utility/common.constant';
-import { IAuthPayload } from '../auth.interface';
-import { UserService } from '../../user/user.service';
+import { AuthService } from '../auth.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    @Inject(CACHE_MANAGER)
-    private readonly cacheManager: Cache,
-    private readonly userService: UserService,
-    private readonly configService: ConfigService,
+    readonly configService: ConfigService,
+    private readonly authService: AuthService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
-      secretOrKey: configService.get('jwt.secret'),
-      passReqToCallback: true,
+      issuer: configService.get('OAUTH_ISSUER'),
+      audience: configService.get('OAUTH_AUDIENCE'),
+      algorithms: ['RS256'],
+      secretOrKeyProvider: jwksRsa.passportJwtSecret({
+        cache: true,
+        rateLimit: true,
+        jwksUri: `${configService.get('OAUTH_ISSUER')}.well-known/jwks.json`,
+      }),
     });
   }
 
-  async validate(
-    request: Request,
-    authPayload: IAuthPayload,
-  ): Promise<IAuthPayload> {
-    try {
-      const accessToken = await this.cacheManager.get<string>(
-        `${USER_SESSION_KEY}:${authPayload.sub}`,
-      );
-      if (accessToken) {
-        return authPayload;
-      }
-
-      const user = await this.userService.findById(authPayload.sub);
-      if (user) {
-        const accessToken = this.extractTokenFromHeader(request);
-        const jwtPayload = decode(accessToken, { json: true });
-        await this.cacheManager.set(
-          `${USER_SESSION_KEY}:${authPayload.sub}`,
-          accessToken,
-          new Date().getTime() - jwtPayload.exp * 1000,
-        );
-
-        return authPayload;
-      }
-
-      throw new UnauthorizedException();
-    } catch {
-      throw new UnauthorizedException();
-    }
-  }
-
-  extractTokenFromHeader(request: Request) {
-    const extractToken = ExtractJwt.fromAuthHeaderAsBearerToken();
-    return extractToken(request);
+  async validate(payload: any) {
+    return this.authService.validateOAuthUser(payload);
   }
 }
