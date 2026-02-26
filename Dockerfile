@@ -1,21 +1,30 @@
-# --- Stage 1: Build ---
+# ---------- Stage 1: Build ----------
 FROM oven/bun:1.3-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json bun.lock* ./
-
-RUN bun install
+COPY package.json bun.lock* prisma.config.ts ./
+RUN bun install --frozen-lockfile
 
 COPY . .
 
-# --- Stage 2: Run ---
+RUN bunx prisma generate
+
+RUN bun run build
+
+
+# ---------- Stage 2: Production ----------
 FROM oven/bun:1.3-alpine AS runner
 
 WORKDIR /app
 
-COPY --from=builder /app /app
+COPY package.json bun.lock* ./
+RUN bun install --frozen-lockfile
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
 EXPOSE 3001
 
-CMD ["bun", "run", "start"]
+CMD ["sh", "-c", "bunx prisma db push && bun run start:prod"]

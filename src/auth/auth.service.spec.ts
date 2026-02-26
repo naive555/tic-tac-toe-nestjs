@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { Test, TestingModule } from '@nestjs/testing';
 
@@ -12,7 +13,13 @@ describe('AuthService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [PassportModule.register({ defaultStrategy: 'jwt' })],
-      providers: [AuthService, JwtStrategy, UserService, PrismaService],
+      providers: [
+        AuthService,
+        ConfigService,
+        JwtStrategy,
+        UserService,
+        PrismaService,
+      ],
       exports: [AuthService],
     }).compile();
 
