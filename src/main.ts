@@ -14,7 +14,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter() as FastifyAdapter,
+    new FastifyAdapter(),
   );
 
   await app.register(compression);
@@ -22,8 +22,11 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
     }),
   );
+  app.enableShutdownHooks();
 
   const configService = app.get(ConfigService);
 
@@ -36,14 +39,14 @@ async function bootstrap() {
 
   if (isCorsEnabled) {
     await app.register(cors, {
-      origin: '*',
+      origin: configService.get<string[]>('cors.origin'),
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     });
   }
 
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
-  await app.listen(port, '0.0.0.0');
+  await app.listen({ port, host: '0.0.0.0' });
   logger.log(`${name} - ${version}`);
   logger.log(`On ${environment} environment`);
   logger.log(`Enable CORS ${isCorsEnabled}`);

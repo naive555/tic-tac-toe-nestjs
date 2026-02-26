@@ -1,7 +1,5 @@
 import { registerAs } from '@nestjs/config';
 
-import { ISqlConfig } from '../utility/common.interface';
-
 export default registerAs<ISqlConfig>('database', () => ({
   type: process.env.DATABASE_TYPE || 'postgres',
   host: process.env.DATABASE_HOST,
@@ -14,3 +12,16 @@ export default registerAs<ISqlConfig>('database', () => ({
   migrationsRun: process.env.DATABASE_MIGRATIONS_RUN === 'true',
   synchronize: process.env.DATABASE_SYNCHRONIZE === 'true',
 }));
+
+export interface ISqlConfig {
+  type: string;
+  host: string;
+  username: string;
+  password: string;
+  database: string;
+  port: number;
+  logging: boolean;
+  entities: string[];
+  migrationsRun: boolean;
+  synchronize: boolean;
+}

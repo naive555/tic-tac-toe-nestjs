@@ -22,7 +22,7 @@ services:
     ports:
       - "${DATABASE_PORT}:5432"
     environment:
-      POSTGRES_DB: "${DATABASE_DATABASE}"
+      POSTGRES_DB: "${DATABASE_DB}"
       POSTGRES_USER: "${DATABASE_USER}"
       POSTGRES_PASSWORD: "${DATABASE_PASSWORD}"
     healthcheck:
