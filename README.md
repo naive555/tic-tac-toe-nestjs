@@ -10,7 +10,7 @@
 
 # Tic Tac Toe API
 
-Full Stack Developer Test – Backend implementation for a Tic-Tac-Toe Web Application.
+Backend implementation for a Tic-Tac-Toe Web Application.
 
 This service provides:
 
@@ -62,12 +62,12 @@ The system is stateless and production-ready.
 
 ```
 src/
- ├── auth/        # OAuth strategy & guards
- ├── user/        # User management
- ├── game/        # Game logic (OX engine)
- ├── score/       # Score & streak calculation
- ├── prisma/      # Prisma service integration
- └── main.ts
+ ├── auth/             # OAuth strategy & guards
+ ├── user/             # User management
+ ├── game/             # Game logic (OX engine)
+ ├── score/            # Score & streak calculation
+ ├── main.ts
+ └── prisma.service.ts # Prisma service
 ```
 
 Design principles:
