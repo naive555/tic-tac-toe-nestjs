@@ -40,7 +40,7 @@ async function bootstrap() {
 
   if (isCorsEnabled) {
     await app.register(cors, {
-      origin: configService.get<string[]>('cors.origin'),
+      origin: configService.get<string | string[]>('common.corsDomains'),
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     });
   }
