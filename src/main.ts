@@ -7,6 +7,7 @@ import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { useContainer } from 'class-validator';
 
 import { AppModule } from './app.module';
@@ -45,6 +46,22 @@ async function bootstrap() {
   }
 
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
+
+  const docBuilder = new DocumentBuilder()
+    .setTitle('Tic Tac Toe API')
+    .setDescription('OAuth2 Tic Tac Toe Game API')
+    .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+      'access-token',
+    )
+    .build();
+  const document = SwaggerModule.createDocument(app, docBuilder);
+  SwaggerModule.setup('docs', app, document);
 
   await app.listen({ port, host: '0.0.0.0' });
   logger.log(`${name} - ${version}`);

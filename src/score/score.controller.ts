@@ -1,30 +1,21 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
-import { GameResult } from '../../generated/prisma/enums';
+import { User } from '../../generated/prisma/client';
+import { CurrentUser } from '../auth/auth.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ScoreService } from './score.service';
 
-class ProcessGameDto {
-  result: GameResult;
-}
-
+@ApiTags('Score')
 @Controller('scores')
 export class ScoreController {
   constructor(private readonly scoreService: ScoreService) {}
 
-  @UseGuards(JwtAuthGuard)
-  @Post('result')
-  async processResult(@Req() req: any, @Body() body: ProcessGameDto) {
-    const userId = req.user.id;
-
-    return this.scoreService.processGameResult(userId, body.result);
-  }
-
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  async getMyScore(@Req() req: any) {
-    const userId = req.user.id;
-    return this.scoreService.getMyScore(userId);
+  async getMyScore(@CurrentUser() user: User) {
+    return this.scoreService.getMyScore(user.id);
   }
 
   @Get()

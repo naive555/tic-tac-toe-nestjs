@@ -19,7 +19,7 @@ FROM oven/bun:1.3-alpine AS runner
 WORKDIR /app
 
 COPY package.json bun.lock* ./
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --production
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
