@@ -7,34 +7,6 @@ import { PrismaService } from '../prisma.service';
 export class ScoreService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async processGameResult(userId: string, result: GameResult) {
-    return this.prisma.$transaction(async (tx) => {
-      const existing = await tx.score.upsert({
-        where: { userId },
-        update: {},
-        create: {
-          userId,
-          score: 0,
-          winStreak: 0,
-        },
-      });
-
-      const { score, streak } = this.calculateScore(
-        existing.score,
-        existing.winStreak,
-        result,
-      );
-
-      return tx.score.update({
-        where: { userId },
-        data: {
-          score,
-          winStreak: streak,
-        },
-      });
-    });
-  }
-
   async getMyScore(userId: string) {
     return this.prisma.score.findUnique({
       where: { userId },
@@ -54,7 +26,7 @@ export class ScoreService {
     });
   }
 
-  private calculateScore(
+  public calculateScore(
     currentScore: number,
     currentStreak: number,
     result: GameResult,
@@ -65,6 +37,7 @@ export class ScoreService {
     if (result === GameResult.WIN) {
       streak++;
       score++;
+
       if (streak === 3) {
         score++;
         streak = 0;
