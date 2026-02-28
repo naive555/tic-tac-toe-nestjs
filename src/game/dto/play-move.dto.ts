@@ -1,6 +1,21 @@
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsNumber,
+  Max,
+  Min,
+} from 'class-validator';
 import { GameMark } from '../enums/game.enums';
 
 export class PlayMoveDto {
-  board: GameMark[]; // lenght: 9
-  position: number; // 0-8
+  @IsArray()
+  @ArrayMinSize(9)
+  @ArrayMaxSize(9)
+  board: GameMark[];
+
+  @IsNumber()
+  @Min(0)
+  @Max(8)
+  position: number;
 }
