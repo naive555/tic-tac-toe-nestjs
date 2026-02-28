@@ -7,13 +7,13 @@ export class AuthService {
   constructor(private readonly userService: UserService) {}
 
   async validateOAuthUser(payload: any) {
-    const { sub, email } = payload;
+    const { oauthId, email } = payload;
 
-    let user = await this.userService.findByOAuthId(sub);
+    let user = await this.userService.findByOAuthId(oauthId);
 
     if (!user) {
       user = await this.userService.createOAuthUser({
-        oauthId: sub,
+        oauthId,
         email,
       });
     }

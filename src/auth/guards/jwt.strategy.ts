@@ -14,18 +14,25 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      issuer: configService.get('OAUTH_ISSUER'),
-      audience: configService.get('OAUTH_AUDIENCE'),
+      issuer: configService.get('oauth.issuer'),
+      audience: configService.get('oauth.audience'),
       algorithms: ['RS256'],
       secretOrKeyProvider: jwksRsa.passportJwtSecret({
         cache: true,
         rateLimit: true,
-        jwksUri: `${configService.get('OAUTH_ISSUER')}.well-known/jwks.json`,
+        jwksUri: `${configService.get('oauth.issuer')}.well-known/jwks.json`,
       }),
     });
   }
 
   async validate(payload: any) {
-    return this.authService.validateOAuthUser(payload);
+    // Custom claim from auth0
+    const customClaimsKey = this.configService.get('oauth.customClaim');
+
+    return this.authService.validateOAuthUser({
+      oauthId: payload.sub,
+      email: payload[`${customClaimsKey}/email`],
+      name: payload[`${customClaimsKey}/name`],
+    });
   }
 }
