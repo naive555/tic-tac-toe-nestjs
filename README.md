@@ -213,7 +213,7 @@ Rules:
 #### Get All Player Scores
 
 ```
-GET /api/score
+GET /api/scores
 ```
 
 Returns all users and their current scores.
