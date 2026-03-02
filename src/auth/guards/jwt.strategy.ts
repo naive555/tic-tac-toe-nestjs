@@ -27,12 +27,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any) {
     // Custom claim from auth0
-    const customClaimsKey = this.configService.get('oauth.customClaim');
+    const customClaim = this.configService.get('oauth.customClaim');
 
     return this.authService.validateOAuthUser({
       oauthId: payload.sub,
-      email: payload[`${customClaimsKey}/email`],
-      name: payload[`${customClaimsKey}/name`],
+      email: payload[`${customClaim}/email`],
+      name: payload[`${customClaim}/name`],
     });
   }
 }

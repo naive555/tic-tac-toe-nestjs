@@ -110,6 +110,9 @@ DATABASE_URL=postgresql://postgres:123456@localhost:5432/tic_tac_toe
 OAUTH_ISSUER=https://YOUR_DOMAIN.auth0.com/
 OAUTH_AUDIENCE=https://tic-tac-toe-api
 
+// To extract the email from the access token
+OAUTH_CUSTOM_CLAIM_KEY=YOUR_CUSTOM_CLAIM_KEY
+
 REDIS_HOST=localhost
 REDIS_PORT=6379
 ```
