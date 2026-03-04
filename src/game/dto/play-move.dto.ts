@@ -47,5 +47,5 @@ export class PlayMoveDto {
 
   @ApiProperty({ enum: Difficulty, default: Difficulty.MEDIUM })
   @IsEnum(Difficulty)
-  difficulty: Difficulty = Difficulty.HARD;
+  difficulty: Difficulty = Difficulty.MEDIUM;
 }

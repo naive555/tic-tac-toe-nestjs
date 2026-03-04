@@ -18,8 +18,6 @@ export class GameService {
     position: number,
     difficulty: Difficulty = Difficulty.MEDIUM,
   ) {
-    this.validateInput(board, position);
-
     if (board[position]) {
       throw new BadRequestException('Invalid move');
     }
@@ -76,19 +74,9 @@ export class GameService {
     });
   }
 
-  private validateInput(board: GameMark[], position: number) {
-    if (!Array.isArray(board) || board.length !== 9) {
-      throw new BadRequestException('Board must have 9 cells');
-    }
-
-    if (position < 0 || position > 8) {
-      throw new BadRequestException('Position must be between 0-8');
-    }
-  }
-
   private makeBotMove(
     board: (GameMark | null)[],
-    difficulty: Difficulty = Difficulty.MEDIUM,
+    difficulty: Difficulty,
   ): void {
     const bestIndex = this.getBestMove(board, difficulty);
     if (bestIndex !== -1) board[bestIndex] = GameMark.O;
