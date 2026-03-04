@@ -1,10 +1,15 @@
+import {
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
-import { GameService } from './game.service';
-import { PrismaService } from '../prisma.service';
+
+import { GameResult, Difficulty } from '../../generated/prisma/enums';
 import { ScoreService } from '../score/score.service';
-import { GameResult } from '../../generated/prisma/enums';
+import { PrismaService } from '../prisma.service';
 import { GameMark } from './enums/game.enums';
+import { GameService } from './game.service';
 
 describe('GameService', () => {
   let service: GameService;
@@ -12,6 +17,15 @@ describe('GameService', () => {
   let scoreService: ScoreService;
 
   const mockPrisma = {
+    game: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+    score: {
+      upsert: jest.fn(),
+      update: jest.fn(),
+    },
     $transaction: jest.fn(),
   };
 
@@ -35,96 +49,143 @@ describe('GameService', () => {
     jest.clearAllMocks();
   });
 
-  const emptyBoard = (): GameMark[] => Array(9).fill(null);
+  const emptyBoard = () => Array(9).fill('');
 
-  it('should throw if board length is invalid', async () => {
-    await expect(service.play('user-1', [null], 0)).rejects.toThrow(
-      BadRequestException,
-    );
-  });
+  describe('startGame', () => {
+    it('should create a new game', async () => {
+      const expected = { id: 'game-1', board: emptyBoard(), result: null };
+      mockPrisma.game.create.mockResolvedValue(expected);
 
-  it('should throw if position out of range', async () => {
-    await expect(service.play('user-1', emptyBoard(), 99)).rejects.toThrow(
-      BadRequestException,
-    );
-  });
+      const result = await service.startGame('user-1', Difficulty.MEDIUM);
 
-  it('should throw if position already taken', async () => {
-    const board = emptyBoard();
-    board[0] = GameMark.X;
-
-    await expect(service.play('user-1', board, 0)).rejects.toThrow(
-      BadRequestException,
-    );
-  });
-
-  it('should return WIN when player completes row', async () => {
-    const board = emptyBoard();
-    board[0] = GameMark.X;
-    board[1] = GameMark.X;
-
-    mockPrisma.$transaction.mockResolvedValue(undefined);
-
-    const result = await service.play('user-1', board, 2);
-
-    expect(result.result).toBe(GameResult.WIN);
-  });
-
-  it('should return DRAW when board full with no winner', async () => {
-    const board: GameMark[] = [
-      GameMark.X,
-      GameMark.O,
-      GameMark.X,
-      GameMark.X,
-      GameMark.O,
-      GameMark.O,
-      GameMark.O,
-      GameMark.X,
-      null,
-    ];
-
-    mockPrisma.$transaction.mockResolvedValue(undefined);
-
-    const result = await service.play('user-1', board, 8);
-
-    expect(result.result).toBe(GameResult.DRAW);
-  });
-
-  it('should continue game when no winner', async () => {
-    const board = emptyBoard();
-
-    const result = await service.play('user-1', board, 0);
-
-    expect(result.result).toBeNull();
-    expect(result.board[0]).toBe(GameMark.X);
-  });
-
-  it('should call transaction when game finished', async () => {
-    const board = emptyBoard();
-    board[0] = GameMark.X;
-    board[1] = GameMark.X;
-
-    mockPrisma.$transaction.mockImplementation(async (cb) =>
-      cb({
-        game: { create: jest.fn() },
-        score: {
-          upsert: jest.fn().mockResolvedValue({
-            score: 1,
-            winStreak: 1,
-          }),
-          update: jest.fn(),
+      expect(prisma.game.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'user-1',
+          difficulty: Difficulty.MEDIUM,
+          board: emptyBoard(),
         },
-      }),
-    );
+      });
+      expect(result).toEqual(expected);
+    });
+  });
 
-    mockScoreService.calculateScore.mockReturnValue({
-      score: 2,
-      streak: 0,
+  describe('move', () => {
+    const mockGame = (overrides = {}) => ({
+      id: 'game-1',
+      userId: 'user-1',
+      board: emptyBoard(),
+      result: null,
+      difficulty: Difficulty.HARD,
+      ...overrides,
     });
 
-    await service.play('user-1', board, 2);
+    it('should throw NotFoundException if game not found', async () => {
+      mockPrisma.game.findUnique.mockResolvedValue(null);
 
-    expect(prisma.$transaction).toHaveBeenCalled();
-    expect(scoreService.calculateScore).toHaveBeenCalled();
+      await expect(service.move('user-1', 'game-1', 0)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw ForbiddenException if game belongs to another user', async () => {
+      mockPrisma.game.findUnique.mockResolvedValue(
+        mockGame({ userId: 'user-2' }),
+      );
+
+      await expect(service.move('user-1', 'game-1', 0)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should throw BadRequestException if game already finished', async () => {
+      mockPrisma.game.findUnique.mockResolvedValue(
+        mockGame({ result: GameResult.WIN }),
+      );
+
+      await expect(service.move('user-1', 'game-1', 0)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw BadRequestException if position already taken', async () => {
+      const board = emptyBoard();
+      board[0] = GameMark.X;
+      mockPrisma.game.findUnique.mockResolvedValue(mockGame({ board }));
+
+      await expect(service.move('user-1', 'game-1', 0)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should update board and return null result when game continues', async () => {
+      mockPrisma.game.findUnique.mockResolvedValue(mockGame());
+      mockPrisma.game.update.mockResolvedValue(undefined);
+
+      const result = await service.move('user-1', 'game-1', 4);
+
+      expect(result.board[4]).toBe(GameMark.X);
+      expect(result.result).toBeNull();
+      expect(prisma.game.update).toHaveBeenCalled();
+    });
+
+    it('should return WIN when player completes a row', async () => {
+      const board = emptyBoard();
+      board[0] = GameMark.X;
+      board[1] = GameMark.X;
+      board[3] = GameMark.O;
+      board[4] = GameMark.O;
+      board[5] = GameMark.X;
+      board[6] = GameMark.X;
+      board[7] = GameMark.O;
+      board[8] = GameMark.O;
+
+      mockPrisma.game.findUnique.mockResolvedValue(mockGame({ board }));
+      mockPrisma.$transaction.mockImplementation(async (cb) =>
+        cb({
+          game: { update: jest.fn() },
+          score: {
+            upsert: jest.fn().mockResolvedValue({ score: 0, winStreak: 0 }),
+            update: jest.fn(),
+          },
+        }),
+      );
+      mockScoreService.calculateScore.mockReturnValue({ score: 10, streak: 1 });
+
+      const result = await service.move('user-1', 'game-1', 2);
+
+      expect(result.result).toBe(GameResult.WIN);
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(scoreService.calculateScore).toHaveBeenCalled();
+    });
+
+    it('should return DRAW when board is full with no winner', async () => {
+      const board: (GameMark | '')[] = [
+        GameMark.X,
+        GameMark.O,
+        GameMark.X,
+        GameMark.X,
+        GameMark.O,
+        GameMark.O,
+        GameMark.O,
+        GameMark.X,
+        '',
+      ];
+
+      mockPrisma.game.findUnique.mockResolvedValue(mockGame({ board }));
+      mockPrisma.$transaction.mockImplementation(async (cb) =>
+        cb({
+          game: { update: jest.fn() },
+          score: {
+            upsert: jest.fn().mockResolvedValue({ score: 0, winStreak: 0 }),
+            update: jest.fn(),
+          },
+        }),
+      );
+      mockScoreService.calculateScore.mockReturnValue({ score: 0, streak: 0 });
+
+      const result = await service.move('user-1', 'game-1', 8);
+
+      expect(result.result).toBe(GameResult.DRAW);
+    });
   });
 });
