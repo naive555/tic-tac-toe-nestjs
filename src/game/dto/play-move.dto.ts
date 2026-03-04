@@ -3,11 +3,12 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsEnum,
   IsNumber,
   Max,
   Min,
 } from 'class-validator';
-import { GameMark } from '../enums/game.enums';
+import { Difficulty, GameMark } from '../enums/game.enums';
 
 export class PlayMoveDto {
   @ApiProperty({
@@ -43,4 +44,8 @@ export class PlayMoveDto {
   @Min(0)
   @Max(8)
   position: number;
+
+  @ApiProperty({ enum: Difficulty, default: Difficulty.MEDIUM })
+  @IsEnum(Difficulty)
+  difficulty: Difficulty = Difficulty.HARD;
 }

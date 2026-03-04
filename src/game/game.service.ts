@@ -3,7 +3,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { GameResult } from '../../generated/prisma/enums';
 import { PrismaService } from '../prisma.service';
 import { ScoreService } from '../score/score.service';
-import { GameMark } from './enums/game.enums';
+import { Difficulty, GameMark } from './enums/game.enums';
 
 @Injectable()
 export class GameService {
@@ -12,7 +12,12 @@ export class GameService {
     private readonly scoreService: ScoreService,
   ) {}
 
-  async play(userId: string, board: GameMark[], position: number) {
+  async play(
+    userId: string,
+    board: GameMark[],
+    position: number,
+    difficulty: Difficulty = Difficulty.MEDIUM,
+  ) {
     this.validateInput(board, position);
 
     if (board[position]) {
@@ -24,7 +29,7 @@ export class GameService {
     let result = this.checkGameResult(board);
 
     if (!result) {
-      this.makeBotMove(board);
+      this.makeBotMove(board, difficulty);
       result = this.checkGameResult(board);
     }
 
@@ -81,17 +86,12 @@ export class GameService {
     }
   }
 
-  private makeBotMove(board: GameMark[]) {
-    const emptyIndexes = board
-      .map((cell, index) => (!cell ? index : null))
-      .filter((v) => v !== null) as number[];
-
-    if (emptyIndexes.length === 0) return;
-
-    const randomIndex =
-      emptyIndexes[Math.floor(Math.random() * emptyIndexes.length)];
-
-    board[randomIndex] = GameMark.O;
+  private makeBotMove(
+    board: (GameMark | null)[],
+    difficulty: Difficulty = Difficulty.MEDIUM,
+  ): void {
+    const bestIndex = this.getBestMove(board, difficulty);
+    if (bestIndex !== -1) board[bestIndex] = GameMark.O;
   }
 
   private checkGameResult(board: GameMark[]): GameResult | null {
@@ -129,5 +129,74 @@ export class GameService {
     return mark && mark === board[second] && mark === board[third]
       ? mark
       : null;
+  }
+
+  private getBestMove(
+    board: (GameMark | null)[],
+    difficulty: Difficulty,
+  ): number {
+    const rand = Math.random();
+
+    // easy = random 70%, medium = random 30%, hard = always minimax
+    const randomChance = {
+      [Difficulty.EASY]: 0.7,
+      [Difficulty.MEDIUM]: 0.3,
+      [Difficulty.HARD]: 0,
+    }[difficulty];
+
+    if (rand < randomChance) {
+      const empty = board
+        .map((cell, i) => (cell === null ? i : null))
+        .filter((v) => v !== null) as number[];
+      return empty[Math.floor(Math.random() * empty.length)] ?? -1;
+    }
+
+    let bestScore = -Infinity;
+    let bestIndex = -1;
+
+    for (let i = 0; i < board.length; i++) {
+      if (board[i]) continue;
+      board[i] = GameMark.O;
+      const score = this.minimax(board, 0, false);
+      board[i] = null;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = i;
+      }
+    }
+
+    return bestIndex;
+  }
+
+  private minimax(
+    board: (GameMark | null)[],
+    depth: number,
+    isMaximizing: boolean,
+  ): number {
+    const result = this.checkGameResult(board);
+    if (result === GameResult.LOSE) return 10 - depth;
+    if (result === GameResult.WIN) return depth - 10;
+    if (result === GameResult.DRAW) return 0;
+
+    if (isMaximizing) {
+      let best = -Infinity;
+      for (let i = 0; i < board.length; i++) {
+        if (board[i]) continue;
+        board[i] = GameMark.O;
+        best = Math.max(best, this.minimax(board, depth + 1, false));
+        board[i] = null;
+      }
+      return best;
+    } else {
+      let best = Infinity;
+      for (let i = 0; i < board.length; i++) {
+        if (board[i]) continue;
+        board[i] = GameMark.X;
+        best = Math.min(best, this.minimax(board, depth + 1, true));
+        board[i] = null;
+      }
+      return best;
+    }
   }
 }
